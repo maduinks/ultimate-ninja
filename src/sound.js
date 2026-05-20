@@ -172,5 +172,20 @@ const SFX = {
       g.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
       osc.start(t); osc.stop(t + 0.33);
     });
+  },
+
+  cardHover() {
+    this._play(ctx => {
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.connect(g); g.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(900, t);
+      osc.frequency.exponentialRampToValueAtTime(1400, t + 0.055);
+      g.gain.setValueAtTime(0.03, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.065);
+      osc.start(t); osc.stop(t + 0.07);
+    });
   }
 };

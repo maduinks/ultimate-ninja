@@ -62,15 +62,15 @@ const CARDS = {
     img: 'ultimate attack.png'
   },
   heal: {
-    id: 'heal', name: 'Heal', type: CT.HEAL, count: 4, deluxeOnly: true,
+    id: 'heal', name: 'Heal', type: CT.HEAL, count: 2, deluxeOnly: true,
     desc: 'Restore 1 lost life.\nCannot exceed 3 lives.',
-    rarity: 'uncommon', color: '#00cc66', glow: 'rgba(0,204,102,0.9)',
+    rarity: 'rare', color: '#00cc66', glow: 'rgba(0,204,102,0.9)',
     img: 'new cards/heal.png'
   },
   steal: {
-    id: 'steal', name: 'Steal', type: CT.STEAL, count: 4, deluxeOnly: true,
+    id: 'steal', name: 'Steal', type: CT.STEAL, count: 2, deluxeOnly: true,
     desc: 'Take a random card from\nany opponent\'s hand.',
-    rarity: 'uncommon', color: '#cc44ff', glow: 'rgba(204,68,255,0.9)',
+    rarity: 'rare', color: '#cc44ff', glow: 'rgba(204,68,255,0.9)',
     img: 'new cards/steal.png'
   }
 };

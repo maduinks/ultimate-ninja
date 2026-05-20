@@ -81,7 +81,7 @@ const UI = {
     this._renderOpponents(myPlayer);
 
     // My player info + hand
-    document.getElementById('curr-name').textContent = myPlayer.name + (Network.mode ? ' (you)' : myPlayer.isAI ? ' 🤖' : '');
+    document.getElementById('curr-name').textContent = (myPlayer.avatar || '🥷') + ' ' + myPlayer.name + (Network.mode ? ' (you)' : myPlayer.isAI ? ' 🤖' : '');
     document.getElementById('curr-lives').innerHTML = this._livesHTML(myPlayer.lives);
     this._renderHand(myPlayer, phase);
 
@@ -101,6 +101,10 @@ const UI = {
       cpz.classList.toggle('my-turn', isMyTurn && isActive);
       cpz.classList.toggle('danger', !myPlayer.isEliminated && myPlayer.lives === 1);
     }
+
+    // Low-health screen vignette
+    const gs = document.getElementById('game-screen');
+    if (gs) gs.classList.toggle('danger-vignette', !myPlayer.isEliminated && myPlayer.lives === 1);
 
     // Combat log
     this._renderLog();
@@ -137,10 +141,25 @@ const UI = {
       ].filter(Boolean).join(' ');
       el.dataset.pid = p.id;
 
+      const isTheirTurn = p === GS.current;
+      const cardBacks = Array.from({ length: p.hand.length }, (_, i) =>
+        `<div class="card-back${isTheirTurn ? ' cb-active' : ''}" style="--cb-i:${i}"></div>`
+      ).join('');
+      const thinkingDots = isTheirTurn && p.isAI
+        ? '<div class="ai-thinking"><span></span><span></span><span></span></div>'
+        : '';
+      const playingLabel = isTheirTurn && !p.isAI
+        ? '<div class="opp-playing">Playing…</div>'
+        : '';
+
       el.innerHTML = `
-        <div class="opp-name">${p.name}${p.isAI ? ' 🤖' : ''}${p.isVanished ? ' 👻' : ''}</div>
+        <div class="opp-top">
+          <span class="opp-avatar">${p.avatar || '🥷'}</span>
+          <span class="opp-name">${p.name}${p.isAI ? ' 🤖' : ''}${p.isVanished ? ' 👻' : ''}</span>
+        </div>
         <div class="opp-lives">${this._livesHTML(p.lives)}</div>
-        <div class="opp-cards">${p.hand.length} 🃏</div>
+        <div class="opp-hand">${cardBacks}</div>
+        ${thinkingDots}${playingLabel}
       `;
 
       if (canTarget) {
@@ -183,7 +202,7 @@ const UI = {
       selectableTypes.add(CT.ULTIMATE_ATTACK);
     }
 
-    p.hand.forEach(card => {
+    p.hand.forEach((card, idx) => {
       const el = this._makeCard(card);
       const playable = isMyTurn && selectableTypes.has(card.type);
       if (playable) {
@@ -194,6 +213,11 @@ const UI = {
         };
       }
       if (GS.selectedCard?.uid === card.uid) el.classList.add('selected');
+      if (card._newlyDrawn) {
+        el.classList.add('deal-in');
+        el.style.setProperty('--deal-delay', `${idx * 75}ms`);
+        setTimeout(() => { el.classList.remove('deal-in'); delete card._newlyDrawn; }, 650 + idx * 75);
+      }
       area.appendChild(el);
     });
   },
@@ -206,13 +230,28 @@ const UI = {
       el.style.setProperty('--cc', card.color);
       el.style.setProperty('--cg', card.glow);
       const face = card.icon
-      ? `<div class="card-icon-face">${card.icon}</div>`
-      : `<img src="${encodeURI(card.img)}" alt="${card.name}">`;
-    el.innerHTML = `
+        ? `<div class="card-icon-face">${card.icon}</div>`
+        : `<img src="${encodeURI(card.img)}" alt="${card.name}">`;
+      el.innerHTML = `
         <div class="card-img-wrap">${face}</div>
         <div class="card-footer">
           <span class="card-name">${card.name}</span>
         </div>`;
+      el.addEventListener('mouseenter', () => {
+        if (el.classList.contains('playable')) SFX.cardHover();
+      });
+      el.addEventListener('mousemove', e => {
+        if (!el.classList.contains('playable')) return;
+        const r = el.getBoundingClientRect();
+        const x = (e.clientX - r.left) / r.width - 0.5;
+        const y = (e.clientY - r.top) / r.height - 0.5;
+        el.style.setProperty('--tilt-x', `${-y * 20}deg`);
+        el.style.setProperty('--tilt-y', `${x * 20}deg`);
+        el.classList.add('tilted');
+      });
+      el.addEventListener('mouseleave', () => {
+        el.classList.remove('tilted');
+      });
       this._cardCache.set(card.uid, el);
     }
     el.className = `card rarity-${card.rarity}`;
@@ -393,6 +432,24 @@ const UI = {
     const gs = document.getElementById('game-screen') || document.body;
     gs.appendChild(el);
     setTimeout(() => el.remove(), 1100);
+  },
+
+  showElimination(player) {
+    const el = document.createElement('div');
+    el.className = 'elim-overlay';
+    el.innerHTML = `<div class="elim-skull">☠</div><div class="elim-pname">${player.avatar || '🥷'} ${player.name}</div><div class="elim-label">ELIMINATED</div>`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 2400);
+  },
+
+  showComboHit(n) {
+    const existing = document.querySelector('.combo-hit-overlay');
+    if (existing) existing.remove();
+    const el = document.createElement('div');
+    el.className = 'combo-hit-overlay';
+    el.textContent = `HIT ${n}!`;
+    (document.getElementById('game-screen') || document.body).appendChild(el);
+    setTimeout(() => el.remove(), 750);
   },
 
   showYourTurn() {

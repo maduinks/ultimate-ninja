@@ -142,10 +142,11 @@ const Combat = {
     attacker.removeCard(card.uid);
     GS.deck.putDiscard(card);
     GS.selectedCard = null;
+    const wasCombo = GS.comboLeft > 0;
     if (GS.comboLeft > 0) GS.comboLeft--;
     else GS.actionDone = true;
 
-    GS.pendingAttack = { attacker, target, card, comboLeft: GS.comboLeft };
+    GS.pendingAttack = { attacker, target, card, comboLeft: GS.comboLeft, wasCombo };
     GS.addLog(`${attacker.name} attacks ${target.name} with ${card.name}!`, 'attack');
     TM.stopTimer();
 
@@ -175,7 +176,7 @@ const Combat = {
   },
 
   resolveAttack(defCard) {
-    const { attacker, target, card: atkCard, comboLeft } = GS.pendingAttack;
+    const { attacker, target, card: atkCard, comboLeft, wasCombo } = GS.pendingAttack;
     GS.pendingAttack = null;
 
     let blocked = false;
@@ -205,6 +206,9 @@ const Combat = {
       );
       UI.animateDamage(target, isUlt);
       SFX.damage();
+      if (wasCombo || comboLeft > 0) {
+        UI.showComboHit(comboLeft > 0 ? 1 : 2);
+      }
     } else {
       UI.animateBlock(target, defCard.type === CT.ULTIMATE_DEFENSE);
       SFX.block();
@@ -215,6 +219,7 @@ const Combat = {
       GS.deck.putDiscard(target.hand);
       target.hand = [];
       SFX.eliminate();
+      UI.showElimination(target);
     }
 
     if (GS.winner) {

@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<canvas id="bg-canvas" style="position:fixed;inset:0;pointer-events:none;z-index:0;"></canvas>
 
 <!-- SETUP SCREEN -->
 <div id="setup-screen">
@@ -147,21 +148,31 @@
 <script src="src/ai.js"></script>
 <script src="src/ui.js"></script>
 <script src="src/network.js"></script>
+<script src="src/particles.js"></script>
 <script>
 let playerCount = 2;
+const AVATARS = ['🥷','🗡️','⚔️','🌀','💨','🔥','⚡','🌑'];
 
 function buildPlayerConfigs() {
   const container = document.getElementById('player-configs');
   container.innerHTML = '';
   for (let i = 1; i <= playerCount; i++) {
+    const avIdx = (i - 1) % AVATARS.length;
     const div = document.createElement('div');
     div.className = 'player-cfg';
     div.innerHTML = `
-      <div class="pnum">${i}</div>
+      <button class="avatar-btn" data-av-idx="${avIdx}" title="Change avatar">${AVATARS[avIdx]}</button>
       <input type="text" value="Player ${i}" maxlength="14" placeholder="Name">
       <button class="ai-toggle" data-idx="${i}">Human</button>`;
     container.appendChild(div);
   }
+  container.querySelectorAll('.avatar-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const next = (parseInt(btn.dataset.avIdx) + 1) % AVATARS.length;
+      btn.dataset.avIdx = next;
+      btn.textContent = AVATARS[next];
+    });
+  });
   container.querySelectorAll('.ai-toggle').forEach(btn => {
     btn.addEventListener('click', () => {
       btn.classList.toggle('is-ai');
@@ -183,9 +194,11 @@ document.getElementById('count-row').addEventListener('click', e => {
 function getLocalConfigs() {
   const configs = [];
   document.querySelectorAll('.player-cfg').forEach(row => {
-    const name = row.querySelector('input').value.trim() || `Player ${configs.length + 1}`;
-    const isAI = row.querySelector('.ai-toggle').classList.contains('is-ai');
-    configs.push({ name, isAI });
+    const name   = row.querySelector('input').value.trim() || `Player ${configs.length + 1}`;
+    const isAI   = row.querySelector('.ai-toggle').classList.contains('is-ai');
+    const avIdx  = parseInt(row.querySelector('.avatar-btn').dataset.avIdx);
+    const avatar = AVATARS[avIdx] || '🥷';
+    configs.push({ name, isAI, avatar });
   });
   return configs;
 }

@@ -59,10 +59,11 @@ class Deck {
 
 // Player
 class Player {
-  constructor(id, name, isAI) {
+  constructor(id, name, isAI, avatar) {
     this.id = id;
     this.name = name;
     this.isAI = isAI;
+    this.avatar = avatar || '🥷';
     this.lives = 3;
     this.hand = [];
     this.isVanished = false;
@@ -91,6 +92,7 @@ class Player {
     const needed = Math.max(0, max - this.hand.length);
     if (needed === 0) return [];
     const drawn = deck.drawN(needed);
+    drawn.forEach(c => { c._newlyDrawn = true; });
     this.addCards(drawn);
     return drawn;
   }
@@ -142,7 +144,7 @@ function initGame(configs, deluxe = false) {
   _lastDeluxe = deluxe;
   GS.deluxe = deluxe;
   if (typeof UI !== 'undefined') UI.clearCardCache();
-  GS.players = configs.map((cfg, i) => new Player(i, cfg.name, cfg.isAI));
+  GS.players = configs.map((cfg, i) => new Player(i, cfg.name, cfg.isAI, cfg.avatar));
   GS.deck = new Deck(configs.length);
   GS.turn = 0;
   GS.round = 1;
