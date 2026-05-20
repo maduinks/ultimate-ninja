@@ -281,15 +281,14 @@ button:active { transform: scale(0.96); }
 .log-ultimate { color: var(--orange); font-weight: 700; } .log-block { color: var(--cyan); }
 .log-vanish { color: var(--purple); } .log-combo { color: var(--gold); }
 .log-fail { color: var(--orange); } .log-eliminate { color: #ff4444; font-weight: 700; }
-#curr-player-zone { background: rgba(0,0,0,0.4); border-top: 1px solid var(--border); padding: 8px 12px 10px; flex-shrink: 0; }
+#curr-player-zone { background: rgba(0,0,0,0.4); border-top: 1px solid var(--border); padding: 8px 12px 10px; flex-shrink: 0; position: relative; z-index: 3; }
 #curr-info { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
 #curr-name { font-weight: 800; font-size: 0.9rem; }
 #curr-lives { font-size: 0.85rem; }
 #curr-info .spacer { flex: 1; }
 #hand-area {
-  display: flex; gap: 6px; overflow-x: auto; padding: 4px 2px 6px;
+  display: flex; gap: 6px; overflow: visible; padding: 30px 2px 6px;
   min-height: 130px; align-items: flex-end;
-  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
 }
 #action-btns { display: flex; gap: 10px; margin-top: 8px; }
 #end-turn-btn {
