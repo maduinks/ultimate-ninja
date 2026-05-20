@@ -152,6 +152,7 @@ const Combat = {
 
     UI.showCardEffect(card);
     SFX[card.type === CT.ULTIMATE_ATTACK ? 'ultimateAttack' : 'attack']();
+    if (card.type === CT.ULTIMATE_ATTACK) UI.showUltimateAttackAura();
 
     setTimeout(() => {
       if (target.isAI) {
@@ -194,6 +195,7 @@ const Combat = {
       } else {
         blocked = true;
         GS.addLog(`${target.name} blocked with ${ultDef ? 'Ultimate ' : ''}Defense!`, 'block');
+        if (ultDef) UI.showUltimateDefenseAura();
       }
     }
 

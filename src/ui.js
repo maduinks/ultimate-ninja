@@ -434,6 +434,49 @@ const UI = {
     setTimeout(() => el.remove(), 1100);
   },
 
+  showUltimateAttackAura() {
+    const gs = document.getElementById('game-screen');
+    if (!gs) return;
+    // 3 expanding shockwave rings
+    for (let i = 0; i < 3; i++) {
+      const ring = document.createElement('div');
+      ring.className = 'ult-atk-ring';
+      ring.style.setProperty('--ring-delay', `${i * 110}ms`);
+      gs.appendChild(ring);
+      setTimeout(() => ring.remove(), 950 + i * 110);
+    }
+    // Center energy burst
+    const burst = document.createElement('div');
+    burst.className = 'ult-atk-burst';
+    gs.appendChild(burst);
+    setTimeout(() => burst.remove(), 750);
+    // Screen flash
+    gs.classList.add('ult-atk-flash');
+    setTimeout(() => gs.classList.remove('ult-atk-flash'), 500);
+  },
+
+  showUltimateDefenseAura() {
+    const gs = document.getElementById('game-screen');
+    if (!gs) return;
+    // 3 rings contracting inward (shield forming)
+    for (let i = 0; i < 3; i++) {
+      const ring = document.createElement('div');
+      ring.className = 'ult-def-ring';
+      ring.style.setProperty('--ring-delay', `${i * 100}ms`);
+      ring.style.setProperty('--ring-start-scale', `${5 - i * 1.2}`);
+      gs.appendChild(ring);
+      setTimeout(() => ring.remove(), 1100 + i * 100);
+    }
+    // Shield core dome
+    const core = document.createElement('div');
+    core.className = 'ult-def-core';
+    gs.appendChild(core);
+    setTimeout(() => core.remove(), 1000);
+    // Screen flash
+    gs.classList.add('ult-def-flash');
+    setTimeout(() => gs.classList.remove('ult-def-flash'), 600);
+  },
+
   showElimination(player) {
     const el = document.createElement('div');
     el.className = 'elim-overlay';
