@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Ultimate Ninja</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<div id="setup-screen">
+  <h1>Ultimate Ninja</h1>
+  <h2>Ninja Battle Card Game</h2>
+  <div>
+    <h2 style="margin-bottom:10px">Number of Players</h2>
+    <div class="count-row" id="count-row">
+      <button class="count-btn active" data-n="2">2</button>
+      <button class="count-btn" data-n="3">3</button>
+      <button class="count-btn" data-n="4">4</button>
+      <button class="count-btn" data-n="5">5</button>
+      <button class="count-btn" data-n="6">6</button>
+    </div>
+  </div>
+  <div id="player-configs"></div>
+  <div id="start-btns">
+    <button id="start-btn">LOCAL GAME</button>
+    <button id="deluxe-btn">✨ DELUXE</button>
+  </div>
+  <button id="online-mode-btn">⚔️ PLAY ONLINE</button>
+</div>
+
+<!-- ONLINE SETUP SCREEN -->
+<div id="online-screen">
+  <h1>Ultimate Ninja</h1>
+  <h2>Online Battle</h2>
+  <div class="online-form">
+    <label class="field-label">Your ninja name</label>
+    <input id="online-name" type="text" placeholder="Ninja name" maxlength="14">
+    <label class="field-label">Server URL</label>
+    <input id="server-url" type="url" placeholder="https://xxxx.ngrok-free.app">
+    <div class="online-btns">
+      <button id="host-btn">🏠 HOST GAME</button>
+      <button id="join-btn">🔗 JOIN GAME</button>
+    </div>
+    <div id="join-code-form">
+      <input id="room-code-input" type="text" placeholder="Room code (e.g. X7K2P9)" maxlength="6">
+      <button id="join-confirm-btn">JOIN</button>
+    </div>
+  </div>
+  <button id="back-to-setup-btn">← Back</button>
+</div>
+
+<!-- LOBBY SCREEN -->
+<div id="lobby-screen">
+  <h1>Ultimate Ninja</h1>
+  <div id="lobby-code-wrap">
+    <div class="field-label">Room Code — share with friends</div>
+    <div id="lobby-code"></div>
+  </div>
+  <div id="lobby-players"></div>
+  <div id="lobby-ai-row" style="display:none">
+    <div class="field-label">AI Opponents</div>
+    <div class="ai-count-row">
+      <button id="ai-minus-btn">−</button>
+      <span id="ai-count-display">0</span>
+      <button id="ai-plus-btn">+</button>
+    </div>
+  </div>
+  <div id="lobby-status">Waiting for players…</div>
+  <button id="lobby-start-btn">START GAME</button>
+</div>
+
+<!-- PASS SCREEN -->
+<div id="pass-screen">
+  <div class="ninja-icon">⚔️</div>
+  <div id="pass-title">Pass to Player</div>
+  <div id="pass-sub"></div>
+  <div id="pass-detail"></div>
+  <button id="pass-ready-btn">READY</button>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="game-screen">
+  <div id="top-bar">
+    <span id="turn-indicator"></span>
+    <span id="phase-label"></span>
+    <span id="deck-info">🃏 <span id="deck-count">0</span></span>
+    <div id="timer-display" class="timer-display">30</div>
+    <button id="mute-btn" title="Toggle sound">🔊</button>
+  </div>
+  <div id="opponents-zone"></div>
+  <div id="mid-area">
+    <div id="play-area">
+      <div id="play-fx"></div>
+    </div>
+    <div id="combat-log">
+      <h3>Combat Log</h3>
+      <div id="log-entries"></div>
+    </div>
+  </div>
+  <div id="curr-player-zone">
+    <div id="curr-info">
+      <span id="curr-name"></span>
+      <span id="curr-lives"></span>
+      <span class="spacer"></span>
+    </div>
+    <div id="hand-area"></div>
+    <div id="action-btns">
+      <button id="end-turn-btn">END TURN</button>
+      <button id="cancel-btn">CANCEL</button>
+    </div>
+  </div>
+  <!-- Defense overlay (inside game-screen for position:absolute) -->
+  <div id="defense-modal">
+    <div id="def-title"></div>
+    <div id="def-warning"></div>
+    <div id="def-atk-preview">
+      <img id="def-card-img" src="" alt="">
+      <div id="def-card-name"></div>
+    </div>
+    <div id="def-cards"></div>
+    <button id="take-dmg-btn">💥 Take Damage</button>
+  </div>
+</div>
+
+<!-- GAME OVER -->
+<div id="gameover-screen">
+  <h1>Victory!</h1>
+  <div id="winner-name"></div>
+  <div id="win-streak" style="display:none"></div>
+  <div id="final-standings"></div>
+  <div id="gameover-btns">
+    <button id="rematch-btn">⚔️ REMATCH</button>
+    <button id="play-again-btn">PLAY AGAIN</button>
+  </div>
+</div>
+
+<!-- Flash message -->
+<div id="flash-msg" class="flash-msg"></div>
+
+<!-- Scripts (load order matters: data → sound → game → combat → ai → ui → network → init) -->
+<script src="src/data.js"></script>
+<script src="src/sound.js"></script>
+<script src="src/game.js"></script>
+<script src="src/combat.js"></script>
+<script src="src/ai.js"></script>
+<script src="src/ui.js"></script>
+<script src="src/network.js"></script>
+<script>
+let playerCount = 2;
+
+function buildPlayerConfigs() {
+  const container = document.getElementById('player-configs');
+  container.innerHTML = '';
+  for (let i = 1; i <= playerCount; i++) {
+    const div = document.createElement('div');
+    div.className = 'player-cfg';
+    div.innerHTML = `
+      <div class="pnum">${i}</div>
+      <input type="text" value="Player ${i}" maxlength="14" placeholder="Name">
+      <button class="ai-toggle" data-idx="${i}">Human</button>`;
+    container.appendChild(div);
+  }
+  container.querySelectorAll('.ai-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      btn.classList.toggle('is-ai');
+      btn.textContent = btn.classList.contains('is-ai') ? 'AI' : 'Human';
+    });
+  });
+}
+
+// ── Local game ────────────────────────────────────────────
+document.getElementById('count-row').addEventListener('click', e => {
+  const btn = e.target.closest('.count-btn');
+  if (!btn) return;
+  document.querySelectorAll('.count-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  playerCount = parseInt(btn.dataset.n);
+  buildPlayerConfigs();
+});
+
+function getLocalConfigs() {
+  const configs = [];
+  document.querySelectorAll('.player-cfg').forEach(row => {
+    const name = row.querySelector('input').value.trim() || `Player ${configs.length + 1}`;
+    const isAI = row.querySelector('.ai-toggle').classList.contains('is-ai');
+    configs.push({ name, isAI });
+  });
+  return configs;
+}
+
+document.getElementById('start-btn').addEventListener('click', () => {
+  initGame(getLocalConfigs(), false);
+});
+
+document.getElementById('deluxe-btn').addEventListener('click', () => {
+  initGame(getLocalConfigs(), true);
+});
+
+// ── Online mode ───────────────────────────────────────────
+document.getElementById('online-mode-btn').addEventListener('click', () => {
+  UI._showOnly('online-screen');
+  document.getElementById('join-code-form').style.display = 'none';
+  // Auto-fill server URL when served from a real server
+  if (window.location.protocol !== 'file:') {
+    document.getElementById('server-url').value = window.location.origin;
+  }
+});
+
+document.getElementById('back-to-setup-btn').addEventListener('click', () => {
+  Network.mode = null;
+  UI._showOnly('setup-screen');
+});
+
+document.getElementById('join-btn').addEventListener('click', () => {
+  const form = document.getElementById('join-code-form');
+  form.style.display = form.style.display === 'flex' ? 'none' : 'flex';
+});
+
+function connectAndDo(action) {
+  const url  = document.getElementById('server-url').value.trim();
+  const name = document.getElementById('online-name').value.trim() || 'Ninja';
+  if (!url) { UI.flash('Enter the server URL first', 'warn'); return; }
+  Network.connect(url, err => {
+    if (err) { UI.flash(err, 'error'); return; }
+    action(name);
+  });
+}
+
+document.getElementById('host-btn').addEventListener('click', () => {
+  connectAndDo(name => {
+    setupNetworkCallbacks();
+    Network.createRoom(name, 2);
+  });
+});
+
+document.getElementById('join-confirm-btn').addEventListener('click', () => {
+  const code = document.getElementById('room-code-input').value.trim().toUpperCase();
+  if (!code) { UI.flash('Enter a room code', 'warn'); return; }
+  connectAndDo(name => {
+    setupNetworkCallbacks();
+    Network.joinRoom(code, name);
+  });
+});
+
+function setupNetworkCallbacks() {
+  Network.onRoomCreated = (roomCode) => {
+    UI._showOnly('lobby-screen');
+    document.getElementById('lobby-code').textContent = roomCode;
+    document.getElementById('lobby-start-btn').style.display = 'none';
+    document.getElementById('lobby-status').textContent = 'Share the code above — waiting for players…';
+    document.getElementById('lobby-ai-row').style.display = 'flex';
+    document.getElementById('ai-count-display').textContent = '0';
+  };
+
+  Network.onJoinOk = () => {
+    UI._showOnly('lobby-screen');
+    document.getElementById('lobby-code-wrap').style.display = 'none';
+    document.getElementById('lobby-start-btn').style.display = 'none';
+    document.getElementById('lobby-status').textContent = 'Connected! Waiting for host to start…';
+  };
+
+  Network.onPlayerList = players => {
+    const list = document.getElementById('lobby-players');
+    list.innerHTML = players.map(p =>
+      `<div class="lobby-player">${p.pid === 0 ? '👑 ' : '⚔️ '} ${p.name}</div>`
+    ).join('');
+    // Show start button for host when 2+ players
+    if (Network.mode === 'host' && players.length >= 2) {
+      document.getElementById('lobby-start-btn').style.display = 'inline-flex';
+      document.getElementById('lobby-status').textContent = 'All players joined — ready to start!';
+    }
+  };
+
+  Network.onGameStart = configs => {
+    initGame(configs);
+  };
+
+  Network.onError = msg => {
+    UI.flash(msg, 'error');
+    Network.mode = null;
+    UI._showOnly('setup-screen');
+  };
+
+  Network.onDisconnect = () => {
+    UI.flash('Disconnected from server', 'error');
+    Network.mode = null;
+    GS.phase = PHASE.SETUP;
+    UI._showOnly('setup-screen');
+  };
+}
+
+document.getElementById('ai-minus-btn').addEventListener('click', () => {
+  const el = document.getElementById('ai-count-display');
+  el.textContent = Math.max(0, parseInt(el.textContent) - 1);
+});
+document.getElementById('ai-plus-btn').addEventListener('click', () => {
+  const el = document.getElementById('ai-count-display');
+  el.textContent = Math.min(4, parseInt(el.textContent) + 1);
+});
+
+document.getElementById('lobby-start-btn').addEventListener('click', () => {
+  const name = document.getElementById('online-name').value.trim() || 'Ninja';
+  const listEl = document.getElementById('lobby-players');
+  const slots  = listEl.querySelectorAll('.lobby-player');
+  const configs = Array.from(slots).map((el, i) => ({
+    name: el.textContent.replace(/^[👑⚔️]\s*/, '').trim() || `Player ${i + 1}`,
+    isAI: false
+  }));
+  if (configs[Network.myPid]) configs[Network.myPid].name = name;
+  const aiCount = parseInt(document.getElementById('ai-count-display').textContent) || 0;
+  for (let i = 0; i < aiCount; i++) configs.push({ name: `AI Ninja ${i + 1}`, isAI: true });
+  Network.startGame(configs);
+});
+
+// ── In-game button handlers ───────────────────────────────
+document.getElementById('pass-ready-btn').addEventListener('click', () => {
+  if (GS.phase === PHASE.DEFENSE_PASS) {
+    GS.phase = PHASE.DEFENSE_PROMPT;
+    UI.render();
+  } else {
+    TM.continueAfterPass();
+  }
+});
+
+document.getElementById('end-turn-btn').addEventListener('click', () => {
+  if (Network.mode === 'guest') { Network.sendAction('END_TURN'); return; }
+  TM.endTurn();
+});
+
+document.getElementById('cancel-btn').addEventListener('click', () => {
+  if (Network.mode === 'guest') { Network.sendAction('CANCEL'); return; }
+  Combat.cancelTarget();
+});
+
+document.getElementById('take-dmg-btn').addEventListener('click', () => {
+  if (Network.mode === 'guest') { Network.sendAction('DEFEND', { uid: null }); return; }
+  Combat.defenderRespond(null);
+});
+
+document.getElementById('rematch-btn').addEventListener('click', () => {
+  if (Network.mode) { location.reload(); return; }
+  if (_lastConfigs) initGame(_lastConfigs, _lastDeluxe);
+});
+
+document.getElementById('play-again-btn').addEventListener('click', () => {
+  if (Network.mode) { location.reload(); return; }
+  GS.phase = PHASE.SETUP;
+  UI.render();
+  buildPlayerConfigs();
+});
+
+document.getElementById('mute-btn').addEventListener('click', () => {
+  SFX.muted = !SFX.muted;
+  document.getElementById('mute-btn').textContent = SFX.muted ? '🔇' : '🔊';
+});
+
+buildPlayerConfigs();
+</script>
+</body>
+</html>
