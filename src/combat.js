@@ -253,6 +253,7 @@ const TM = {
     GS.actionDone = false;
     GS.comboLeft = 0;
     GS.selectedCard = null;
+    GS.handRevealed = false;
     GS.phase = PHASE.DRAW_PHASE;
     UI.render();
 

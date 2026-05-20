@@ -119,6 +119,7 @@ const GS = {
   vanishPlayed: false,
   actionDone: false,
   deluxe: false,
+  handRevealed: false,
 
   get current() { return this.players[this.turn]; },
   get alive() { return this.players.filter(p => p.alive); },
@@ -151,6 +152,7 @@ function initGame(configs, deluxe = false) {
   GS.comboLeft = 0;
   GS.vanishPlayed = false;
   GS.actionDone = false;
+  GS.handRevealed = false;
 
   GS.players.forEach(p => p.drawToFill(GS.deck, 5));
   GS.addLog('Game started! Good luck, ninjas.', 'turn');

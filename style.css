@@ -222,6 +222,13 @@ button:active { transform: scale(0.96); }
 }
 .opponent-zone.vanished { opacity: 0.6; border-color: var(--purple); }
 .opponent-zone.eliminated { opacity: 0.3; filter: grayscale(1); }
+.opponent-zone.current-turn {
+  border-color: var(--gold);
+  box-shadow: 0 0 14px rgba(255,204,0,0.45);
+  animation: current-turn-pulse 1.5s ease-in-out infinite;
+}
+.opponent-zone.current-turn .opp-name::after { content: ' ⚔️'; }
+@keyframes current-turn-pulse { 0%,100%{ box-shadow:0 0 8px rgba(255,204,0,0.3); } 50%{ box-shadow:0 0 22px rgba(255,204,0,0.7); } }
 .opp-name { font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
 .opp-lives { font-size: 0.75rem; margin: 3px 0; }
 .opp-cards { font-size: 0.7rem; color: var(--dim); }
@@ -436,6 +443,16 @@ button:active { transform: scale(0.96); }
 /* Winner pulse */
 #winner-name { animation: winner-pulse 1s ease-in-out infinite; }
 @keyframes winner-pulse { 0%,100%{ transform:scale(1); text-shadow:0 0 20px rgba(255,204,0,.5); } 50%{ transform:scale(1.05); text-shadow:0 0 40px rgba(255,204,0,1); } }
+
+/* Reveal-hand anti-peek button */
+.reveal-hand-btn {
+  margin: auto; padding: 18px 36px; border-radius: 12px;
+  background: rgba(153,51,255,0.12); border: 2px solid var(--purple);
+  color: var(--purple); font-size: 1rem; letter-spacing: 1px; text-transform: uppercase;
+  animation: reveal-pulse 2s ease-in-out infinite;
+}
+.reveal-hand-btn:hover { background: rgba(153,51,255,0.25); box-shadow: 0 0 20px rgba(153,51,255,0.5); }
+@keyframes reveal-pulse { 0%,100%{ box-shadow:0 0 8px rgba(153,51,255,0.2); } 50%{ box-shadow:0 0 20px rgba(153,51,255,0.55); } }
 
 @media (max-width: 480px) { #combat-log { width: 120px; font-size: 0.65rem; } .card { width: 72px; } }
 @media (max-width: 360px) { #combat-log { display: none; } .card { width: 66px; } }

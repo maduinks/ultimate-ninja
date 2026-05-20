@@ -94,10 +94,11 @@ const UI = {
     document.getElementById('end-turn-btn').style.display = (isMyTurn && inAction) ? 'inline-flex' : 'none';
     document.getElementById('cancel-btn').style.display   = (isMyTurn && phase === PHASE.TARGETING) ? 'inline-flex' : 'none';
 
-    // Glow the player zone when it's your turn to act
+    // Glow the player zone from the start of your turn through all active phases
+    const isActive = [PHASE.DRAW_PHASE, PHASE.ACTION, PHASE.COMBO_SELECT, PHASE.TARGETING].includes(phase);
     const cpz = document.getElementById('curr-player-zone');
     if (cpz) {
-      cpz.classList.toggle('my-turn', isMyTurn && inAction);
+      cpz.classList.toggle('my-turn', isMyTurn && isActive);
       cpz.classList.toggle('danger', !myPlayer.isEliminated && myPlayer.lives === 1);
     }
 
@@ -128,10 +129,11 @@ const UI = {
       const el = document.createElement('div');
       el.className = [
         'opponent-zone',
-        p.isEliminated ? 'eliminated' : '',
-        p.isVanished   ? 'vanished'   : '',
+        p === GS.current   ? 'current-turn' : '',
+        p.isEliminated     ? 'eliminated'   : '',
+        p.isVanished       ? 'vanished'     : '',
         (!p.isEliminated && p.lives === 1) ? 'danger' : '',
-        canTarget      ? 'targetable' : ''
+        canTarget          ? 'targetable'   : ''
       ].filter(Boolean).join(' ');
       el.dataset.pid = p.id;
 
@@ -154,6 +156,16 @@ const UI = {
   _renderHand(p, phase) {
     const area = document.getElementById('hand-area');
     area.innerHTML = '';
+
+    // Anti-peek: hide cards until the player taps "Show Hand" in local pass-and-play
+    if (!Network.mode && !GS.handRevealed && !p.isAI) {
+      const btn = document.createElement('button');
+      btn.className = 'reveal-hand-btn';
+      btn.textContent = '👁  Show Your Hand';
+      btn.onclick = () => { GS.handRevealed = true; UI.render(); };
+      area.appendChild(btn);
+      return;
+    }
 
     const isMyTurn = Network.mode ? Network.myPid === GS.turn : !p.isAI;
     const selectableTypes = new Set();
