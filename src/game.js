@@ -122,6 +122,14 @@ const GS = {
   actionDone: false,
   deluxe: false,
   handRevealed: false,
+  kills: {},
+  momentumHits: {},
+  hitThisTurn: false,
+  extraDrawNext: new Set(),
+  toDiscard: new Set(),
+  alliances: new Set(),
+  alliancesUsed: new Set(),
+  allianceMode: false,
 
   get current() { return this.players[this.turn]; },
   get alive() { return this.players.filter(p => p.alive); },
@@ -135,6 +143,15 @@ const GS = {
     if (this.log.length > 25) this.log.pop();
   }
 };
+
+function getBountyTarget() {
+  const entries = Object.entries(GS.kills).filter(([id]) => !GS.players[+id]?.isEliminated);
+  if (!entries.length) return null;
+  const max = Math.max(...entries.map(([,k]) => k));
+  if (max === 0) return null;
+  const pid = entries.find(([,k]) => k === max)?.[0];
+  return pid !== undefined ? GS.players[+pid] : null;
+}
 
 let _lastConfigs = null;
 let _lastDeluxe = false;
@@ -155,6 +172,14 @@ function initGame(configs, deluxe = false) {
   GS.vanishPlayed = false;
   GS.actionDone = false;
   GS.handRevealed = false;
+  GS.kills = {};
+  GS.momentumHits = {};
+  GS.hitThisTurn = false;
+  GS.extraDrawNext = new Set();
+  GS.toDiscard = new Set();
+  GS.alliances = new Set();
+  GS.alliancesUsed = new Set();
+  GS.allianceMode = false;
 
   GS.players.forEach(p => p.drawToFill(GS.deck, 5));
   GS.addLog('Game started! Good luck, ninjas.', 'turn');

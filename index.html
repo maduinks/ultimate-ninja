@@ -90,6 +90,7 @@
     <div id="timer-display" class="timer-display">30</div>
     <button id="mute-btn" title="Toggle sound">🔊</button>
   </div>
+  <div id="turn-order-strip"></div>
   <div id="opponents-zone"></div>
   <div id="mid-area">
     <div id="play-area">
@@ -108,6 +109,7 @@
     </div>
     <div id="hand-area"></div>
     <div id="action-btns">
+      <button id="alliance-btn" style="display:none">🤝 ALLIANCE</button>
       <button id="end-turn-btn">END TURN</button>
       <button id="cancel-btn">CANCEL</button>
     </div>
@@ -338,6 +340,7 @@ document.getElementById('pass-ready-btn').addEventListener('click', () => {
 });
 
 document.getElementById('end-turn-btn').addEventListener('click', () => {
+  if (GS.phase === PHASE.DISCARD) { TM.finishDiscard(); return; }
   if (Network.mode === 'guest') { Network.sendAction('END_TURN'); return; }
   TM.endTurn();
 });
@@ -345,6 +348,11 @@ document.getElementById('end-turn-btn').addEventListener('click', () => {
 document.getElementById('cancel-btn').addEventListener('click', () => {
   if (Network.mode === 'guest') { Network.sendAction('CANCEL'); return; }
   Combat.cancelTarget();
+});
+
+document.getElementById('alliance-btn').addEventListener('click', () => {
+  GS.allianceMode = !GS.allianceMode;
+  UI.render();
 });
 
 document.getElementById('take-dmg-btn').addEventListener('click', () => {

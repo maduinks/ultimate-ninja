@@ -13,6 +13,7 @@ const UI = {
       case PHASE.TARGETING:
       case PHASE.COMBO_SELECT:   this._renderGame(); break;
       case PHASE.DEFENSE_PROMPT: this._renderDefensePrompt(); break;
+      case PHASE.DISCARD:        this._renderDiscard(); break;
       case PHASE.GAME_OVER:      this._renderGameOver(); break;
     }
   },
@@ -77,6 +78,9 @@ const UI = {
     timerEl.textContent = GS.timerSecs;
     timerEl.className = 'timer-display' + (GS.timerSecs <= 10 ? ' urgent' : '');
 
+    // Turn order strip
+    this._renderTurnOrder();
+
     // Opponents
     this._renderOpponents(myPlayer);
 
@@ -94,9 +98,25 @@ const UI = {
     document.getElementById('end-turn-btn').style.display = (isMyTurn && inAction) ? 'inline-flex' : 'none';
     document.getElementById('cancel-btn').style.display   = (isMyTurn && phase === PHASE.TARGETING) ? 'inline-flex' : 'none';
 
+    // Alliance button
+    const ab = document.getElementById('alliance-btn');
+    if (ab) {
+      const canAlliance = isMyTurn && phase === PHASE.ACTION && !GS.alliancesUsed.has(myPlayer.id) && !GS.actionDone && GS.alive.filter(p=>p!==myPlayer).length > 0;
+      ab.style.display = (canAlliance || GS.allianceMode) ? 'inline-flex' : 'none';
+      ab.textContent = GS.allianceMode ? '✖ CANCEL' : '🤝 ALLIANCE';
+    }
+
+    // Momentum badge on curr-player-zone
+    const cpz = document.getElementById('curr-player-zone');
+    const streak = GS.momentumHits[myPlayer.id] || 0;
+    let badge = cpz?.querySelector('.momentum-badge');
+    if (streak >= 1) {
+      if (!badge) { badge = document.createElement('div'); badge.className = 'momentum-badge'; cpz.appendChild(badge); }
+      badge.textContent = `🔥 ${streak} hit streak`;
+    } else if (badge) badge.remove();
+
     // Glow the player zone from the start of your turn through all active phases
     const isActive = [PHASE.DRAW_PHASE, PHASE.ACTION, PHASE.COMBO_SELECT, PHASE.TARGETING].includes(phase);
-    const cpz = document.getElementById('curr-player-zone');
     if (cpz) {
       cpz.classList.toggle('my-turn', isMyTurn && isActive);
       cpz.classList.toggle('danger', !myPlayer.isEliminated && myPlayer.lives === 1);
@@ -110,11 +130,63 @@ const UI = {
     this._renderLog();
   },
 
+  _renderTurnOrder() {
+    const el = document.getElementById('turn-order-strip');
+    if (!el) return;
+    const alive = GS.players.filter(p => !p.isEliminated);
+    if (alive.length < 2) { el.innerHTML = ''; return; }
+    const si = alive.indexOf(GS.current);
+    const ordered = [...alive.slice(si), ...alive.slice(0, si)];
+    el.innerHTML = ordered.map((p, i) => `
+      <div class="to-item${i === 0 ? ' to-now' : i === 1 ? ' to-next' : ''}">
+        <span class="to-av">${p.avatar || '🥷'}</span>
+        ${i === 0 ? '<span class="to-lbl">NOW</span>' : i === 1 ? '<span class="to-lbl">NEXT</span>' : ''}
+      </div>${i < ordered.length - 1 ? '<span class="to-arrow">›</span>' : ''}
+    `).join('');
+  },
+
+  _renderDiscard() {
+    this._showOnly('game-screen');
+    const p = GS.current;
+    const excess = p.hand.length - 7;
+    const needed = excess - GS.toDiscard.size;
+    document.getElementById('turn-indicator').textContent = `${p.avatar || '🥷'} ${p.name}`;
+    document.getElementById('phase-label').textContent = needed > 0
+      ? `Hand limit — discard ${needed} more card${needed !== 1 ? 's' : ''}`
+      : '✅ Ready — confirm discard';
+    document.getElementById('timer-display').style.display = 'none';
+    document.getElementById('deck-count').textContent = GS.deck?.draw.length || 0;
+    this._renderTurnOrder();
+    this._renderOpponents(p);
+    document.getElementById('curr-name').textContent = `${p.avatar || '🥷'} ${p.name}`;
+    document.getElementById('curr-lives').innerHTML = this._livesHTML(p.lives);
+    const area = document.getElementById('hand-area');
+    area.innerHTML = '';
+    p.hand.forEach(card => {
+      const el = this._makeCard(card);
+      el.classList.add('playable');
+      if (GS.toDiscard.has(card.uid)) el.classList.add('discard-marked');
+      el.onclick = () => {
+        if (GS.toDiscard.has(card.uid)) GS.toDiscard.delete(card.uid);
+        else if (GS.toDiscard.size < excess) GS.toDiscard.add(card.uid);
+        UI.render();
+      };
+      area.appendChild(el);
+    });
+    const endBtn = document.getElementById('end-turn-btn');
+    endBtn.style.display = GS.toDiscard.size >= excess ? 'inline-flex' : 'none';
+    endBtn.textContent = `DISCARD ${GS.toDiscard.size}`;
+    document.getElementById('cancel-btn').style.display = 'none';
+    this._renderLog();
+  },
+
   _renderOpponents(myPlayer) {
     const zone = document.getElementById('opponents-zone');
     zone.innerHTML = '';
     const me = myPlayer || (Network.mode ? GS.players[Network.myPid] : GS.current);
     const isMyTurn = Network.mode ? Network.myPid === GS.turn : GS.current === me;
+
+    const bountyTarget = getBountyTarget();
 
     GS.players.filter(p => p !== me).forEach(p => {
       const targeting = GS.phase === PHASE.TARGETING && isMyTurn;
@@ -129,33 +201,43 @@ const UI = {
           canTarget = true;
         }
       }
+      const isAllianceTarget = GS.allianceMode && !p.isEliminated && p !== GS.current;
 
       const el = document.createElement('div');
+      const allianceKey = [me.id, p.id].sort((a,b)=>a-b).join('-');
+      const isAllied = GS.alliances.has(allianceKey);
       el.className = [
         'opponent-zone',
         p === GS.current   ? 'current-turn' : '',
         p.isEliminated     ? 'eliminated'   : '',
         p.isVanished       ? 'vanished'     : '',
         (!p.isEliminated && p.lives === 1) ? 'danger' : '',
-        canTarget          ? 'targetable'   : ''
+        canTarget          ? 'targetable'   : '',
+        isAllianceTarget   ? 'alliance-target' : '',
+        isAllied           ? 'allied'       : ''
       ].filter(Boolean).join(' ');
       el.dataset.pid = p.id;
 
       const isTheirTurn = p === GS.current;
+      const isBounty = bountyTarget === p;
       const cardBacks = Array.from({ length: p.hand.length }, (_, i) =>
         `<div class="card-back${isTheirTurn ? ' cb-active' : ''}" style="--cb-i:${i}"></div>`
       ).join('');
       const thinkingDots = isTheirTurn && p.isAI
-        ? '<div class="ai-thinking"><span></span><span></span><span></span></div>'
-        : '';
+        ? '<div class="ai-thinking"><span></span><span></span><span></span></div>' : '';
       const playingLabel = isTheirTurn && !p.isAI
-        ? '<div class="opp-playing">Playing…</div>'
-        : '';
+        ? '<div class="opp-playing">Playing…</div>' : '';
+      const bountyBadge = isBounty ? '<div class="bounty-badge">🎯 BOUNTY</div>' : '';
+      const allianceBadge = isAllied ? '<div class="alliance-badge">🤝</div>' : '';
+      const pStreak = GS.momentumHits[p.id] || 0;
+      const momentumBadge = pStreak >= 1 ? `<div class="opp-momentum">🔥${pStreak}</div>` : '';
 
       el.innerHTML = `
+        ${bountyBadge}
         <div class="opp-top">
           <span class="opp-avatar">${p.avatar || '🥷'}</span>
           <span class="opp-name">${p.name}${p.isAI ? ' 🤖' : ''}${p.isVanished ? ' 👻' : ''}</span>
+          ${allianceBadge}${momentumBadge}
         </div>
         <div class="opp-lives">${this._livesHTML(p.lives)}</div>
         <div class="opp-hand">${cardBacks}</div>
@@ -166,6 +248,18 @@ const UI = {
         el.addEventListener('click', () => {
           if (Network.mode === 'guest') Network.sendAction('SELECT_TARGET', { id: p.id });
           else Combat.targetSelected(p);
+        });
+      }
+      if (isAllianceTarget) {
+        el.addEventListener('click', () => {
+          const key = [GS.current.id, p.id].sort((a,b)=>a-b).join('-');
+          GS.alliances.add(key);
+          GS.alliancesUsed.add(GS.current.id);
+          GS.allianceMode = false;
+          GS.actionDone = true;
+          GS.addLog(`🤝 ${GS.current.name} & ${p.name} formed an alliance this round!`, 'block');
+          UI.flash(`Alliance formed with ${p.name}!`, 'info');
+          UI.render();
         });
       }
       zone.appendChild(el);
@@ -232,11 +326,11 @@ const UI = {
       const face = card.icon
         ? `<div class="card-icon-face">${card.icon}</div>`
         : `<img src="${encodeURI(card.img)}" alt="${card.name}">`;
+      const tipText = card.desc ? card.desc.replace(/\n/g,'<br>') : '';
       el.innerHTML = `
         <div class="card-img-wrap">${face}</div>
-        <div class="card-footer">
-          <span class="card-name">${card.name}</span>
-        </div>`;
+        <div class="card-footer"><span class="card-name">${card.name}</span></div>
+        <div class="card-tooltip"><strong>${card.name}</strong><span class="tip-type">${card.type.replace(/_/g,' ')}</span>${tipText ? '<p>' + tipText + '</p>' : ''}</div>`;
       el.addEventListener('mouseenter', () => {
         if (el.classList.contains('playable')) SFX.cardHover();
       });
@@ -475,6 +569,17 @@ const UI = {
     // Screen flash
     gs.classList.add('ult-def-flash');
     setTimeout(() => gs.classList.remove('ult-def-flash'), 600);
+  },
+
+  showStolenCard(stolen, fromPlayer) {
+    const el = document.createElement('div');
+    el.className = 'stolen-overlay';
+    const face = stolen.icon
+      ? `<div class="card-icon-face" style="font-size:2.5rem;height:70px">${stolen.icon}</div>`
+      : `<img src="${encodeURI(stolen.img)}" style="width:64px;border-radius:6px;object-fit:cover">`;
+    el.innerHTML = `<div class="stolen-header">🫳 Stolen from ${fromPlayer.name}!</div><div class="stolen-preview" style="--cc:${stolen.color}">${face}</div><div class="stolen-name">${stolen.name}</div>`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 2200);
   },
 
   showElimination(player) {

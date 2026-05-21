@@ -20,6 +20,7 @@ const PHASE = {
   TARGETING: 'targeting',
   COMBO_SELECT: 'combo_select',
   DEFENSE_PROMPT: 'defense_prompt',
+  DISCARD: 'discard',
   GAME_OVER: 'game_over'
 };
 

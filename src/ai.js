@@ -107,6 +107,27 @@ const AI = {
     return pool.reduce((best, f) => f.lives < best.lives ? f : best, pool[0]);
   },
 
+  doDiscard() {
+    const p = GS.current;
+    const excess = p.hand.length - 7;
+    const priority = [CT.DEFENSE, CT.ATTACK, CT.VANISH, CT.ULTIMATE_DEFENSE, CT.COMBO, CT.STEAL, CT.HEAL, CT.ULTIMATE_ATTACK];
+    const toDiscard = [];
+    for (const type of priority) {
+      if (toDiscard.length >= excess) break;
+      for (const c of p.cardsByType(type)) {
+        if (toDiscard.length >= excess) break;
+        toDiscard.push(c.uid);
+      }
+    }
+    // Fill any remaining with first available
+    for (const c of p.hand) {
+      if (toDiscard.length >= excess) break;
+      if (!toDiscard.includes(c.uid)) toDiscard.push(c.uid);
+    }
+    toDiscard.forEach(uid => GS.toDiscard.add(uid));
+    TM.finishDiscard();
+  },
+
   chooseDefense(defender, attackCard) {
     const isUlt = attackCard.type === CT.ULTIMATE_ATTACK;
 

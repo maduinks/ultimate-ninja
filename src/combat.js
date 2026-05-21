@@ -134,8 +134,19 @@ const Combat = {
       attacker.hand.push(stolen);
       GS.addLog(`${attacker.name} stole ${stolen.name} from ${target.name}!`, 'combo');
       UI.showCardEffect(card);
+      UI.showStolenCard(stolen, target);
       SFX.vanish();
       setTimeout(() => { UI.render(); setTimeout(() => TM.endTurn(), 500); }, 400);
+      return;
+    }
+
+    // Alliance check
+    const allianceKey = [attacker.id, target.id].sort((a,b)=>a-b).join('-');
+    if (GS.alliances.has(allianceKey)) {
+      UI.flash(`Alliance! ${attacker.name} can't attack ${target.name} this round.`, 'warn');
+      GS.selectedCard = null;
+      GS.phase = GS.comboLeft > 0 ? PHASE.COMBO_SELECT : PHASE.ACTION;
+      UI.render();
       return;
     }
 
@@ -200,18 +211,27 @@ const Combat = {
     }
 
     if (!blocked) {
+      const preBounty = getBountyTarget();
       target.takeDamage();
       const isUlt = atkCard.type === CT.ULTIMATE_ATTACK;
-      GS.addLog(
-        `${attacker.name} hit ${target.name}! ${target.lives} ❤️ left.`,
-        isUlt ? 'ultimate' : 'damage'
-      );
+      GS.addLog(`${attacker.name} hit ${target.name}! ${target.lives} ❤️ left.`, isUlt ? 'ultimate' : 'damage');
       UI.animateDamage(target, isUlt);
       SFX.damage();
-      if (wasCombo || comboLeft > 0) {
-        UI.showComboHit(comboLeft > 0 ? 1 : 2);
+      GS.hitThisTurn = true;
+      if (wasCombo || comboLeft > 0) UI.showComboHit(comboLeft > 0 ? 1 : 2);
+      if (target.isEliminated) {
+        GS.kills[attacker.id] = (GS.kills[attacker.id] || 0) + 1;
+        if (preBounty && preBounty === target) {
+          const bonus = GS.deck.drawN(2);
+          bonus.forEach(c => { c._newlyDrawn = true; });
+          attacker.addCards(bonus);
+          GS.addLog(`💰 ${attacker.name} claimed the BOUNTY! +2 cards!`, 'combo');
+          UI.flash(`💰 Bounty claimed! +2 cards`, 'info');
+        }
       }
     } else {
+      GS.momentumHits[attacker.id] = 0;
+      GS.extraDrawNext.delete(attacker.id);
       UI.animateBlock(target, defCard.type === CT.ULTIMATE_DEFENSE);
       SFX.block();
     }
@@ -261,26 +281,58 @@ const TM = {
     GS.comboLeft = 0;
     GS.selectedCard = null;
     GS.handRevealed = false;
+    GS.allianceMode = false;
+    GS.hitThisTurn = false;
+    GS.toDiscard.clear();
     GS.phase = PHASE.DRAW_PHASE;
     UI.render();
 
     setTimeout(() => {
       const drawn = p.drawToFill(GS.deck, 5);
-      GS.addLog(
-        `${p.name}'s turn — drew ${drawn.length} card${drawn.length !== 1 ? 's' : ''}.`,
-        'turn'
-      );
-      GS.phase = PHASE.ACTION;
-      if (p.isAI) {
-        UI.render();
-        setTimeout(() => AI.takeTurn(), 1100);
-      } else {
-        const isMyDevice = !Network.mode || Network.myPid === GS.turn;
-        if (isMyDevice) UI.showYourTurn();
-        this.startTimer();
-        UI.render();
+      GS.addLog(`${p.name}'s turn — drew ${drawn.length} card${drawn.length !== 1 ? 's' : ''}.`, 'turn');
+
+      // Bonus draw from momentum streak
+      if (GS.extraDrawNext.has(p.id)) {
+        GS.extraDrawNext.delete(p.id);
+        const bonus = GS.deck.drawN(1);
+        bonus.forEach(c => { c._newlyDrawn = true; });
+        p.addCards(bonus);
+        GS.addLog(`🔥 ${p.name} draws a bonus card from momentum!`, 'combo');
       }
+
+      // Hand limit — enter discard phase if over 7
+      if (p.hand.length > 7) {
+        GS.phase = PHASE.DISCARD;
+        UI.render();
+        if (p.isAI) setTimeout(() => AI.doDiscard(), 600);
+        return;
+      }
+
+      this._beginAction(p);
     }, 700);
+  },
+
+  _beginAction(p) {
+    GS.phase = PHASE.ACTION;
+    if (p.isAI) {
+      UI.render();
+      setTimeout(() => AI.takeTurn(), 1100);
+    } else {
+      const isMyDevice = !Network.mode || Network.myPid === GS.turn;
+      if (isMyDevice) UI.showYourTurn();
+      this.startTimer();
+      UI.render();
+    }
+  },
+
+  finishDiscard() {
+    const p = GS.current;
+    GS.toDiscard.forEach(uid => {
+      const c = p.removeCard(uid);
+      if (c) GS.deck.putDiscard(c);
+    });
+    GS.toDiscard.clear();
+    this._beginAction(p);
   },
 
   startTimer() {
@@ -306,12 +358,23 @@ const TM = {
     GS.comboLeft = 0;
     GS.selectedCard = null;
 
+    // Update momentum streak
+    if (GS.hitThisTurn) {
+      GS.momentumHits[GS.turn] = (GS.momentumHits[GS.turn] || 0) + 1;
+      if (GS.momentumHits[GS.turn] === 2) {
+        GS.extraDrawNext.add(GS.turn);
+        GS.addLog(`🔥 ${GS.current.name} is on a MOMENTUM streak! +1 card next turn!`, 'combo');
+      }
+    } else {
+      GS.momentumHits[GS.turn] = 0;
+    }
+
     let next = (GS.turn + 1) % GS.players.length;
     for (let i = 0; i < GS.players.length; i++) {
       if (!GS.players[next].isEliminated) break;
       next = (next + 1) % GS.players.length;
     }
-    if (next <= GS.turn) GS.round++;
+    if (next <= GS.turn) { GS.round++; GS.alliances.clear(); }
     GS.turn = next;
 
     const nextP = GS.current;

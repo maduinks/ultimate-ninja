@@ -307,7 +307,7 @@ button:active { transform: scale(0.96); }
 .card {
   flex-shrink: 0; width: 88px; border-radius: 8px; background: var(--bg2);
   border: 2px solid var(--cc, var(--border)); box-shadow: 0 0 8px var(--cg, transparent);
-  cursor: default; transition: transform 0.15s, box-shadow 0.15s; overflow: hidden; position: relative;
+  cursor: default; transition: transform 0.15s, box-shadow 0.15s; overflow: visible; position: relative;
 }
 .card.rarity-rare { border-width: 2.5px; }
 .card.playable { cursor: pointer; }
@@ -617,6 +617,104 @@ button:active { transform: scale(0.96); }
 }
 .reveal-hand-btn:hover { background: rgba(153,51,255,0.25); box-shadow: 0 0 20px rgba(153,51,255,0.5); }
 @keyframes reveal-pulse { 0%,100%{ box-shadow:0 0 8px rgba(153,51,255,0.2); } 50%{ box-shadow:0 0 20px rgba(153,51,255,0.55); } }
+
+/* ── TURN ORDER STRIP ── */
+#turn-order-strip {
+  display: flex; align-items: center; justify-content: center;
+  gap: 4px; padding: 4px 10px; background: rgba(0,0,0,0.3);
+  border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap;
+}
+.to-item {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 2px 6px; border-radius: 6px; transition: all 0.2s;
+}
+.to-now  { background: rgba(255,204,0,0.15); border: 1px solid rgba(255,204,0,0.4); }
+.to-next { background: rgba(0,153,255,0.10); border: 1px solid rgba(0,153,255,0.25); }
+.to-item:not(.to-now):not(.to-next) { opacity: 0.45; }
+.to-av  { font-size: 0.9rem; line-height: 1; }
+.to-lbl { font-size: 0.5rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--gold); }
+.to-next .to-lbl { color: var(--blue); }
+.to-arrow { color: var(--dim); font-size: 0.8rem; align-self: center; }
+
+/* ── CARD TOOLTIP ── */
+.card-tooltip {
+  position: absolute; bottom: calc(100% + 6px); left: 50%;
+  transform: translateX(-50%);
+  width: 152px; background: rgba(7,7,26,0.97);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 10px; font-size: 0.72rem; line-height: 1.45;
+  color: var(--text); pointer-events: none; opacity: 0;
+  transition: opacity 0.15s; z-index: 200;
+  white-space: normal; text-align: left;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+}
+.card:hover .card-tooltip { opacity: 1; }
+.tip-type {
+  display: block; font-size: 0.62rem; color: var(--cc, var(--dim));
+  text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;
+}
+
+/* ── DISCARD PHASE ── */
+.discard-marked {
+  box-shadow: 0 0 0 3px var(--red), 0 0 20px rgba(255,51,102,0.5) !important;
+  opacity: 0.5;
+}
+
+/* ── ALLIANCE BUTTON + STATES ── */
+#alliance-btn {
+  padding: 9px 18px; border-radius: 8px;
+  background: var(--bg3); border: 1px solid rgba(0,255,204,0.5); color: var(--cyan);
+  font-size: 0.82rem; letter-spacing: 1px; text-transform: uppercase;
+}
+#alliance-btn:hover { background: rgba(0,255,204,0.12); }
+.opponent-zone.alliance-target {
+  border-color: var(--cyan); cursor: pointer;
+  box-shadow: 0 0 16px rgba(0,255,204,0.5);
+  animation: alliance-pulse 0.7s ease-in-out infinite;
+}
+@keyframes alliance-pulse { 0%,100%{ box-shadow:0 0 8px rgba(0,255,204,0.3); } 50%{ box-shadow:0 0 22px rgba(0,255,204,0.7); } }
+.opponent-zone.allied { border-color: rgba(0,255,204,0.4); }
+.alliance-badge { font-size: 0.9rem; display: inline-block; }
+
+/* ── BOUNTY BADGE ── */
+.bounty-badge {
+  position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
+  background: linear-gradient(135deg, #8b6914, var(--gold)); color: #07071a;
+  font-size: 0.6rem; font-weight: 900; letter-spacing: 1px; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 10px; white-space: nowrap;
+  animation: bounty-glow 1.5s ease-in-out infinite alternate;
+}
+@keyframes bounty-glow { from{ box-shadow:0 0 6px rgba(255,204,0,0.4); } to{ box-shadow:0 0 16px rgba(255,204,0,0.8); } }
+
+/* ── MOMENTUM BADGES ── */
+.momentum-badge {
+  position: absolute; top: 6px; right: 10px;
+  font-size: 0.72rem; color: var(--orange); font-weight: 700;
+  text-shadow: 0 0 8px rgba(255,102,0,0.6);
+}
+.opp-momentum { font-size: 0.65rem; color: var(--orange); font-weight: 700; margin-left: 2px; }
+
+/* ── STOLEN CARD OVERLAY ── */
+.stolen-overlay {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  background: rgba(7,7,26,0.92); border: 1px solid var(--purple);
+  border-radius: 12px; padding: 16px 24px; z-index: 500;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  backdrop-filter: blur(6px);
+  animation: stolen-pop 0.3s cubic-bezier(.22,1,.36,1), stolen-fade 0.35s ease-in 1.85s forwards;
+  box-shadow: 0 0 30px rgba(204,68,255,0.4);
+}
+@keyframes stolen-pop  { from{ opacity:0; transform:translate(-50%,-50%) scale(0.7); } to{ opacity:1; transform:translate(-50%,-50%) scale(1); } }
+@keyframes stolen-fade { from{ opacity:1; } to{ opacity:0; } }
+.stolen-header { font-size: 0.85rem; color: var(--purple); font-weight: 700; }
+.stolen-preview {
+  width: 64px; height: 86px; border-radius: 8px;
+  border: 2px solid var(--cc, var(--border)); overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg2); box-shadow: 0 0 14px var(--cc, transparent);
+}
+.stolen-preview img { width: 100%; height: 100%; object-fit: cover; }
+.stolen-name { font-size: 0.8rem; color: var(--text); font-weight: 600; }
 
 @media (max-width: 480px) { #combat-log { width: 120px; font-size: 0.65rem; } .card { width: 72px; } }
 @media (max-width: 360px) { #combat-log { display: none; } .card { width: 66px; } }
