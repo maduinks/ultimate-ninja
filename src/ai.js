@@ -131,6 +131,13 @@ const AI = {
   chooseDefense(defender, attackCard) {
     const isUlt = attackCard.type === CT.ULTIMATE_ATTACK;
 
+    // Reactive vanish: dodge regular attacks (always at 1 life, sometimes otherwise)
+    if (!isUlt && defender.hasType(CT.VANISH) && !defender.isVanished) {
+      if (defender.lives === 1 || Math.random() > 0.55) {
+        return defender.cardsByType(CT.VANISH)[0];
+      }
+    }
+
     if (isUlt) {
       if (defender.hasType(CT.ULTIMATE_DEFENSE)) {
         // Always block ultimate if 1 life, usually otherwise

@@ -774,5 +774,44 @@ button:active { transform: scale(0.96); }
   100% { opacity: 0; transform: rotate(calc(var(--cf-rot, 0deg) + 540deg)) translateY(110vh); }
 }
 
+/* Alliance offer card staging */
+.card.offer-staged {
+  box-shadow: 0 0 0 3px var(--cyan), 0 0 22px rgba(0,255,204,0.55) !important;
+  transform: rotate(var(--fan-angle,0deg)) translateY(calc(var(--fan-dip,0px) - 20px)) scale(1.1) !important;
+}
+
+/* ── STEAL SELECT MODAL ── */
+#steal-modal {
+  display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.86);
+  flex-direction: column; align-items: center; justify-content: center;
+  z-index: 50; padding: 20px; gap: 14px; text-align: center; backdrop-filter: blur(4px);
+}
+#steal-title   { font-size: 1.2rem; font-weight: 900; color: var(--purple); }
+#steal-subtitle { font-size: 0.85rem; color: var(--dim); }
+#steal-choices { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.steal-choice {
+  width: 46px; height: 64px; border-radius: 7px; cursor: pointer;
+  background: linear-gradient(135deg, #1a1a40, #2e1a5a);
+  border: 2px solid var(--purple);
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.15s, box-shadow 0.15s;
+  animation: steal-card-in 0.36s cubic-bezier(.22,1,.36,1) calc(var(--si,0) * 55ms) both;
+}
+.steal-choice:hover {
+  transform: translateY(-12px) scale(1.14);
+  box-shadow: 0 8px 26px rgba(153,51,255,0.75);
+}
+.steal-choice-num { font-size: 0.75rem; font-weight: 900; color: rgba(204,68,255,0.7); }
+@keyframes steal-card-in {
+  from { opacity:0; transform:translateY(26px) rotate(-7deg); }
+  to   { opacity:1; transform:none; }
+}
+#steal-random-btn {
+  padding: 10px 26px; border-radius: 8px;
+  background: rgba(153,51,255,0.15); border: 1px solid var(--purple);
+  color: var(--purple); font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase;
+}
+#steal-random-btn:hover { background: rgba(153,51,255,0.3); }
+
 @media (max-width: 480px) { #combat-log { width: 120px; font-size: 0.65rem; } .card { width: 72px; } }
 @media (max-width: 360px) { #combat-log { display: none; } .card { width: 66px; } }

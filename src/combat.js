@@ -67,6 +67,7 @@ const Combat = {
       p.removeCard(card.uid);
       GS.deck.putDiscard(card);
       GS.comboLeft = 2;
+      GS.comboHitsLanded = 0;
       GS.actionDone = true;
       GS.addLog(`${p.name} plays Combo — attack twice!`, 'combo');
       UI.showCardEffect(card);
@@ -105,6 +106,18 @@ const Combat = {
     UI.render();
   },
 
+  stealSelected(idx) {
+    if (!GS.pendingSteal) return;
+    const { attacker, target } = GS.pendingSteal;
+    GS.pendingSteal = null;
+    const i = Math.max(0, Math.min(idx, target.hand.length - 1));
+    const stolen = target.hand.splice(i, 1)[0];
+    attacker.hand.push(stolen);
+    GS.addLog(`${attacker.name} stole ${stolen.name} from ${target.name}!`, 'combo');
+    UI.showStolenCard(stolen, target);
+    setTimeout(() => { GS.phase = PHASE.ACTION; UI.render(); setTimeout(() => TM.endTurn(), 500); }, 300);
+  },
+
   targetSelected(target) {
     const attacker = GS.current;
     const card = GS.selectedCard;
@@ -130,12 +143,20 @@ const Combat = {
       GS.deck.putDiscard(card);
       GS.selectedCard = null;
       GS.actionDone = true;
+      UI.showCardEffect(card);
+      SFX.vanish();
+      // Local human player picks which card to steal
+      if (!Network.mode && !attacker.isAI) {
+        GS.pendingSteal = { attacker, target };
+        GS.phase = PHASE.STEAL_SELECT;
+        setTimeout(() => UI.render(), 350);
+        return;
+      }
+      // AI or online: random steal
       const stolen = target.hand.splice(Math.floor(Math.random() * target.hand.length), 1)[0];
       attacker.hand.push(stolen);
       GS.addLog(`${attacker.name} stole ${stolen.name} from ${target.name}!`, 'combo');
-      UI.showCardEffect(card);
       UI.showStolenCard(stolen, target);
-      SFX.vanish();
       setTimeout(() => { UI.render(); setTimeout(() => TM.endTurn(), 500); }, 400);
       return;
     }
@@ -197,16 +218,29 @@ const Combat = {
       target.removeCard(defCard.uid);
       GS.deck.putDiscard(defCard);
 
-      const ultAtk = atkCard.type === CT.ULTIMATE_ATTACK;
-      const ultDef = defCard.type === CT.ULTIMATE_DEFENSE;
-
-      if (ultAtk && !ultDef) {
-        blocked = false;
-        GS.addLog(`${target.name}'s Defense failed vs Ultimate Attack!`, 'fail');
+      if (defCard.type === CT.VANISH) {
+        // Reactive vanish — dodges regular attacks, fails vs Ultimate
+        if (atkCard.type === CT.ULTIMATE_ATTACK) {
+          blocked = false;
+          GS.addLog(`${target.name}'s Vanish failed vs Ultimate Attack!`, 'fail');
+        } else {
+          blocked = true;
+          target.isVanished = true;
+          GS.addLog(`${target.name} VANISHED — attack dodged!`, 'vanish');
+          UI.showCardEffect(defCard);
+          SFX.vanish();
+        }
       } else {
-        blocked = true;
-        GS.addLog(`${target.name} blocked with ${ultDef ? 'Ultimate ' : ''}Defense!`, 'block');
-        if (ultDef) UI.showUltimateDefenseAura();
+        const ultAtk = atkCard.type === CT.ULTIMATE_ATTACK;
+        const ultDef = defCard.type === CT.ULTIMATE_DEFENSE;
+        if (ultAtk && !ultDef) {
+          blocked = false;
+          GS.addLog(`${target.name}'s Defense failed vs Ultimate Attack!`, 'fail');
+        } else {
+          blocked = true;
+          GS.addLog(`${target.name} blocked with ${ultDef ? 'Ultimate ' : ''}Defense!`, 'block');
+          if (ultDef) UI.showUltimateDefenseAura();
+        }
       }
     }
 
@@ -218,7 +252,10 @@ const Combat = {
       UI.animateDamage(target, isUlt);
       SFX.damage();
       GS.hitThisTurn = true;
-      if (wasCombo || comboLeft > 0) UI.showComboHit(comboLeft > 0 ? 1 : 2);
+      if (wasCombo || comboLeft > 0) {
+        GS.comboHitsLanded++;
+        UI.showComboHit(comboLeft > 0 ? 1 : 2);
+      }
       if (target.isEliminated) {
         GS.kills[attacker.id] = (GS.kills[attacker.id] || 0) + 1;
         if (preBounty && preBounty === target) {
@@ -232,8 +269,10 @@ const Combat = {
     } else {
       GS.momentumHits[attacker.id] = 0;
       GS.extraDrawNext.delete(attacker.id);
-      UI.animateBlock(target, defCard.type === CT.ULTIMATE_DEFENSE);
-      SFX.block();
+      if (defCard?.type !== CT.VANISH) {
+        UI.animateBlock(target, defCard.type === CT.ULTIMATE_DEFENSE);
+        SFX.block();
+      }
     }
 
     if (target.isEliminated) {
@@ -267,6 +306,15 @@ const Combat = {
       GS.addLog(`${attacker.name} has no more attacks for combo.`, '');
     }
 
+    // Full combo bonus: both hits landed unblocked
+    if (wasCombo && GS.comboHitsLanded >= 2 && !GS.winner) {
+      const bonus = GS.deck.drawN(1);
+      bonus.forEach(c => { c._newlyDrawn = true; });
+      attacker.addCards(bonus);
+      GS.addLog(`⚡ ${attacker.name} FULL COMBO — drew a bonus card!`, 'combo');
+      UI.flash('⚡ Full Combo! +1 card!', 'info');
+    }
+
     setTimeout(() => TM.endTurn(), 700);
   }
 };
@@ -283,7 +331,10 @@ const TM = {
     GS.selectedCard = null;
     GS.handRevealed = false;
     GS.allianceMode = false;
+    GS.allianceOfferCard = null;
     GS.hitThisTurn = false;
+    GS.comboHitsLanded = 0;
+    GS.pendingSteal = null;
     GS.toDiscard.clear();
     GS.phase = PHASE.DRAW_PHASE;
     UI.render();

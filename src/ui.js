@@ -11,7 +11,8 @@ const UI = {
       case PHASE.DRAW_PHASE:
       case PHASE.ACTION:
       case PHASE.TARGETING:
-      case PHASE.COMBO_SELECT:   this._renderGame(); break;
+      case PHASE.COMBO_SELECT:
+      case PHASE.STEAL_SELECT:   this._renderGame(); break;
       case PHASE.DEFENSE_PROMPT: this._renderDefensePrompt(); break;
       case PHASE.DISCARD:        this._renderDiscard(); break;
       case PHASE.GAME_OVER:      this._renderGameOver(); break;
@@ -63,11 +64,15 @@ const UI = {
     document.getElementById('turn-indicator').textContent = `Round ${GS.round}  ·  ${p.name}${turnTag}`;
 
     // Phase label
+    const allianceHint = isMyTurn && GS.allianceMode
+      ? (GS.allianceOfferCard ? `Offer ${GS.allianceOfferCard.name} — click an opponent` : 'Pick a card to offer (optional), then click an opponent')
+      : null;
     const labels = {
       [PHASE.DRAW_PHASE]:   'Drawing cards...',
-      [PHASE.ACTION]:       isMyTurn ? 'Play a card or End Turn' : `${p.name}'s turn…`,
+      [PHASE.ACTION]:       allianceHint || (isMyTurn ? 'Play a card or End Turn' : `${p.name}'s turn…`),
       [PHASE.TARGETING]:    isMyTurn ? `Choose a target for ${GS.selectedCard?.name || ''}` : `${p.name} is targeting…`,
-      [PHASE.COMBO_SELECT]: isMyTurn ? `Combo! Select attack ${GS.comboLeft < 2 ? '2' : '1'} of 2` : `${p.name} combo…`
+      [PHASE.COMBO_SELECT]: isMyTurn ? `Combo! Select attack ${GS.comboLeft < 2 ? '2' : '1'} of 2` : `${p.name} combo…`,
+      [PHASE.STEAL_SELECT]: `Pick a card to steal from ${GS.pendingSteal?.target?.name || ''}…`
     };
     document.getElementById('phase-label').textContent = labels[phase] || '';
 
@@ -126,6 +131,17 @@ const UI = {
     const gs = document.getElementById('game-screen');
     if (gs) gs.classList.toggle('danger-vignette', !myPlayer.isEliminated && myPlayer.lives === 1);
 
+    // Steal select modal
+    const stealModal = document.getElementById('steal-modal');
+    if (stealModal) {
+      if (phase === PHASE.STEAL_SELECT && GS.pendingSteal) {
+        this._renderStealModal();
+        stealModal.style.display = 'flex';
+      } else {
+        stealModal.style.display = 'none';
+      }
+    }
+
     // Combat log
     this._renderLog();
   },
@@ -178,6 +194,26 @@ const UI = {
     endBtn.textContent = `DISCARD ${GS.toDiscard.size}`;
     document.getElementById('cancel-btn').style.display = 'none';
     this._renderLog();
+  },
+
+  _renderStealModal() {
+    if (!GS.pendingSteal) return;
+    const { target } = GS.pendingSteal;
+    document.getElementById('steal-title').textContent = `🫳 Steal from ${target.name}`;
+    document.getElementById('steal-subtitle').textContent =
+      `${target.hand.length} card${target.hand.length !== 1 ? 's' : ''} in hand — pick a slot!`;
+    const choices = document.getElementById('steal-choices');
+    choices.innerHTML = '';
+    target.hand.forEach((_, idx) => {
+      const btn = document.createElement('div');
+      btn.className = 'steal-choice';
+      btn.style.setProperty('--si', idx);
+      btn.innerHTML = `<div class="steal-choice-num">${idx + 1}</div>`;
+      btn.onclick = () => Combat.stealSelected(idx);
+      choices.appendChild(btn);
+    });
+    document.getElementById('steal-random-btn').onclick =
+      () => Combat.stealSelected(Math.floor(Math.random() * target.hand.length));
   },
 
   _renderOpponents(myPlayer) {
@@ -257,8 +293,18 @@ const UI = {
           GS.alliancesUsed.add(GS.current.id);
           GS.allianceMode = false;
           GS.actionDone = true;
-          GS.addLog(`🤝 ${GS.current.name} & ${p.name} formed an alliance this round!`, 'block');
-          UI.flash(`Alliance formed with ${p.name}!`, 'info');
+          if (GS.allianceOfferCard) {
+            const offered = GS.current.removeCard(GS.allianceOfferCard.uid);
+            if (offered) {
+              p.hand.push(offered);
+              GS.addLog(`🤝 ${GS.current.name} gifted ${offered.name} to ${p.name} — alliance sealed!`, 'block');
+              UI.flash(`Alliance + ${offered.name} gifted to ${p.name}!`, 'info');
+            }
+            GS.allianceOfferCard = null;
+          } else {
+            GS.addLog(`🤝 ${GS.current.name} & ${p.name} formed an alliance this round!`, 'block');
+            UI.flash(`Alliance formed with ${p.name}!`, 'info');
+          }
           UI.render();
         });
       }
@@ -309,12 +355,21 @@ const UI = {
       el.style.setProperty('--fan-angle', `${norm * spread}deg`);
       el.style.setProperty('--fan-dip',   `${dip}px`);
 
-      const playable = isMyTurn && selectableTypes.has(card.type);
+      const playable = isMyTurn && !GS.allianceMode && selectableTypes.has(card.type);
       if (playable) {
         el.classList.add('playable');
         el.onclick = () => {
           if (Network.mode === 'guest') Network.sendAction('PLAY_CARD', { uid: card.uid });
           else Combat.playCard(card);
+        };
+      }
+      // Alliance mode: click cards to stage as a gift for the alliance
+      if (isMyTurn && GS.allianceMode) {
+        el.classList.add('playable');
+        if (GS.allianceOfferCard?.uid === card.uid) el.classList.add('offer-staged');
+        el.onclick = () => {
+          GS.allianceOfferCard = GS.allianceOfferCard?.uid === card.uid ? null : card;
+          UI.render();
         };
       }
       if (GS.selectedCard?.uid === card.uid) el.classList.add('selected');
@@ -396,15 +451,18 @@ const UI = {
     const container = document.getElementById('def-cards');
     container.innerHTML = '';
     const defCards = target.hand.filter(c =>
-      c.type === CT.DEFENSE || c.type === CT.ULTIMATE_DEFENSE
+      c.type === CT.DEFENSE || c.type === CT.ULTIMATE_DEFENSE ||
+      (c.type === CT.VANISH && !target.isVanished)
     );
 
     defCards.forEach(c => {
       const el = this._makeCard(c);
       el.classList.add('playable', 'defense-choice');
-      if (isUlt && c.type === CT.DEFENSE) {
+      if (isUlt && (c.type === CT.DEFENSE || c.type === CT.VANISH)) {
         el.classList.add('ineffective');
-        el.title = 'Regular Defense cannot block Ultimate Attack!';
+        el.title = c.type === CT.VANISH
+          ? 'Vanish cannot dodge Ultimate Attacks!'
+          : 'Regular Defense cannot block Ultimate Attack!';
       }
       el.onclick = () => {
         if (Network.mode === 'guest') Network.sendAction('DEFEND', { uid: c.uid });

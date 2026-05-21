@@ -21,6 +21,7 @@ const PHASE = {
   COMBO_SELECT: 'combo_select',
   DEFENSE_PROMPT: 'defense_prompt',
   DISCARD: 'discard',
+  STEAL_SELECT: 'steal_select',
   GAME_OVER: 'game_over'
 };
 
@@ -40,7 +41,7 @@ const CARDS = {
   },
   vanish: {
     id: 'vanish', name: 'Vanish', type: CT.VANISH, count: 5,
-    desc: 'Play at start of turn.\nUntargetable this round.\nUltimate Attacks bypass.',
+    desc: 'Play at start of turn OR react\nto dodge an incoming attack.\nUltimate Attacks still bypass.',
     rarity: 'uncommon', color: '#9933ff', glow: 'rgba(153,51,255,0.9)',
     img: 'vanish.png'
   },

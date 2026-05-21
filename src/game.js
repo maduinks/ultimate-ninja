@@ -102,7 +102,7 @@ class Player {
 
   canDefend(attackType) {
     if (attackType === CT.ULTIMATE_ATTACK) return this.hasType(CT.ULTIMATE_DEFENSE);
-    return this.hasType(CT.DEFENSE) || this.hasType(CT.ULTIMATE_DEFENSE);
+    return this.hasType(CT.DEFENSE) || this.hasType(CT.ULTIMATE_DEFENSE) || this.hasType(CT.VANISH);
   }
 }
 
@@ -130,6 +130,9 @@ const GS = {
   alliances: new Set(),
   alliancesUsed: new Set(),
   allianceMode: false,
+  allianceOfferCard: null,
+  comboHitsLanded: 0,
+  pendingSteal: null,
 
   get current() { return this.players[this.turn]; },
   get alive() { return this.players.filter(p => p.alive); },
@@ -180,6 +183,9 @@ function initGame(configs, deluxe = false) {
   GS.alliances = new Set();
   GS.alliancesUsed = new Set();
   GS.allianceMode = false;
+  GS.allianceOfferCard = null;
+  GS.comboHitsLanded = 0;
+  GS.pendingSteal = null;
 
   GS.players.forEach(p => p.drawToFill(GS.deck, 5));
   GS.addLog('Game started! Good luck, ninjas.', 'turn');
