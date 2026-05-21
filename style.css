@@ -317,12 +317,19 @@ button:active { transform: scale(0.96); }
   z-index: 10;
 }
 .card.selected {
-  transform: translateY(-20px) scale(1.1);
-  box-shadow: 0 10px 50px var(--cg, transparent), 0 0 80px var(--cg, transparent);
   z-index: 11;
-  animation: card-selected-pulse 0.8s ease-in-out infinite alternate;
+  animation:
+    card-pickup 0.32s cubic-bezier(.15,.8,.2,1) both,
+    card-selected-pulse 0.9s ease-in-out 0.32s infinite alternate;
 }
-@keyframes card-selected-pulse { 0%{ box-shadow: 0 10px 40px var(--cg), 0 0 60px var(--cg); } 100%{ box-shadow: 0 10px 60px var(--cg), 0 0 100px var(--cg); } }
+@keyframes card-pickup {
+  from { transform: rotate(var(--fan-angle,0deg)) translateY(var(--fan-dip,0px)) scale(1); box-shadow: none; }
+  to   { transform: translateY(-22px) scale(1.11); box-shadow: 0 10px 50px var(--cg,transparent), 0 0 80px var(--cg,transparent); }
+}
+@keyframes card-selected-pulse {
+  from { transform: translateY(-22px) scale(1.11); box-shadow: 0 10px 42px var(--cg), 0 0 65px var(--cg); }
+  to   { transform: translateY(-26px) scale(1.13); box-shadow: 0 16px 64px var(--cg), 0 0 108px var(--cg); }
+}
 .card.ineffective { opacity: 0.5; }
 .card-img-wrap { width: 100%; aspect-ratio: 3/4; overflow: hidden; background: #0a0a20; }
 .card-img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -553,10 +560,11 @@ button:active { transform: scale(0.96); }
 
 /* Card deal animation */
 @keyframes deal-in {
-  from { opacity: 0; transform: translateY(35px) scale(0.82) rotate(-4deg); }
-  to   { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+  0%   { opacity: 0; transform: translateY(70px) scale(0.65) rotate(-10deg); }
+  65%  { opacity: 1; transform: translateY(-8px) scale(1.05) rotate(2deg); }
+  100% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
 }
-.deal-in { animation: deal-in 0.42s cubic-bezier(.22,1,.36,1) var(--deal-delay, 0ms) both; }
+.deal-in { animation: deal-in 0.52s cubic-bezier(.22,1,.36,1) var(--deal-delay, 0ms) both; }
 
 /* Elimination cinematic */
 .elim-overlay {
@@ -595,6 +603,12 @@ button:active { transform: scale(0.96); }
 /* 3D card tilt */
 .card.tilted {
   transform: perspective(600px) rotateX(var(--tilt-x,0)) rotateY(var(--tilt-y,0)) translateY(-16px) scale(1.1) !important;
+  box-shadow: 0 16px 50px var(--cg, transparent), 0 0 80px var(--cg, transparent) !important;
+  transition: none !important;
+}
+/* Fan hand — tilt keeps fan angle */
+.card.in-hand.tilted {
+  transform: rotate(var(--fan-angle,0deg)) perspective(600px) rotateX(var(--tilt-x,0)) rotateY(var(--tilt-y,0)) translateY(calc(var(--fan-dip,0px) - 18px)) scale(1.1) !important;
   box-shadow: 0 16px 50px var(--cg, transparent), 0 0 80px var(--cg, transparent) !important;
   transition: none !important;
 }
@@ -715,6 +729,50 @@ button:active { transform: scale(0.96); }
 }
 .stolen-preview img { width: 100%; height: 100%; object-fit: cover; }
 .stolen-name { font-size: 0.8rem; color: var(--text); font-weight: 600; }
+
+/* ── HAND FAN LAYOUT ── */
+.card.in-hand {
+  transform: rotate(var(--fan-angle,0deg)) translateY(var(--fan-dip,0px));
+  transform-origin: 50% 140%;
+  transition: transform 0.2s ease, box-shadow 0.2s;
+}
+.card.in-hand.playable:hover {
+  transform: rotate(var(--fan-angle,0deg)) translateY(calc(var(--fan-dip,0px) - 26px)) scale(1.12) !important;
+  box-shadow: 0 14px 44px var(--cg,transparent), 0 0 60px var(--cg,transparent);
+  z-index: 20;
+}
+
+/* ── ROUND START BANNER ── */
+.round-banner {
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  width: 100vw; text-align: center; padding: 18px 0;
+  background: rgba(0,0,0,0.72); backdrop-filter: blur(8px);
+  border-top: 2px solid var(--gold); border-bottom: 2px solid var(--gold);
+  pointer-events: none; z-index: 350;
+  animation: round-banner-anim 1.8s cubic-bezier(.22,1,.36,1) forwards;
+}
+.round-banner-num {
+  font-size: clamp(2rem, 8vw, 3.5rem); font-weight: 900; letter-spacing: 8px;
+  color: var(--gold); text-transform: uppercase;
+  text-shadow: 0 0 30px rgba(255,204,0,0.8), 0 0 60px rgba(255,204,0,0.4);
+}
+@keyframes round-banner-anim {
+  0%  { opacity:0; clip-path: inset(0 50% 0 50%); }
+  18% { opacity:1; clip-path: inset(0 0% 0 0%); }
+  75% { opacity:1; clip-path: inset(0 0% 0 0%); }
+  100%{ opacity:0; clip-path: inset(0 0% 0 0%); transform: translate(-50%,-50%) scale(0.92); }
+}
+
+/* ── VICTORY CONFETTI ── */
+.confetti-piece {
+  position: fixed; border-radius: 2px; pointer-events: none; z-index: 600;
+  animation: confetti-fall var(--cf-dur, 1.6s) ease-in var(--cf-delay, 0s) forwards;
+}
+@keyframes confetti-fall {
+  0%   { opacity: 1; transform: rotate(var(--cf-rot, 0deg)) translateY(0); }
+  100% { opacity: 0; transform: rotate(calc(var(--cf-rot, 0deg) + 540deg)) translateY(110vh); }
+}
 
 @media (max-width: 480px) { #combat-log { width: 120px; font-size: 0.65rem; } .card { width: 72px; } }
 @media (max-width: 360px) { #combat-log { display: none; } .card { width: 66px; } }

@@ -296,8 +296,19 @@ const UI = {
       selectableTypes.add(CT.ULTIMATE_ATTACK);
     }
 
+    const n = p.hand.length;
     p.hand.forEach((card, idx) => {
       const el = this._makeCard(card);
+
+      // Fan layout vars
+      const mid  = (n - 1) / 2;
+      const norm = idx - mid;
+      const spread = Math.min(6, 22 / Math.max(1, n - 1));
+      const dip    = Math.abs(norm) * Math.min(5, 14 / Math.max(1, n - 1));
+      el.classList.add('in-hand');
+      el.style.setProperty('--fan-angle', `${norm * spread}deg`);
+      el.style.setProperty('--fan-dip',   `${dip}px`);
+
       const playable = isMyTurn && selectableTypes.has(card.type);
       if (playable) {
         el.classList.add('playable');
@@ -309,8 +320,8 @@ const UI = {
       if (GS.selectedCard?.uid === card.uid) el.classList.add('selected');
       if (card._newlyDrawn) {
         el.classList.add('deal-in');
-        el.style.setProperty('--deal-delay', `${idx * 75}ms`);
-        setTimeout(() => { el.classList.remove('deal-in'); delete card._newlyDrawn; }, 650 + idx * 75);
+        el.style.setProperty('--deal-delay', `${idx * 80}ms`);
+        setTimeout(() => { el.classList.remove('deal-in'); delete card._newlyDrawn; }, 700 + idx * 80);
       }
       area.appendChild(el);
     });
@@ -615,5 +626,27 @@ const UI = {
     el.textContent = '⚡ COMBO ⚡';
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 1000);
+  },
+
+  showRoundBanner(n) {
+    const el = document.createElement('div');
+    el.className = 'round-banner';
+    el.innerHTML = `<span class="round-banner-num">⚔️ ROUND ${n} ⚔️</span>`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1900);
+  },
+
+  showVictoryConfetti() {
+    const COLORS = ['#ff3366','#ffcc00','#9933ff','#00ffcc','#ff6600','#0099ff','#ffffff','#ff99cc'];
+    for (let i = 0; i < 70; i++) {
+      const p = document.createElement('div');
+      p.className = 'confetti-piece';
+      const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+      const w = 6 + Math.random() * 7;
+      const h = 8 + Math.random() * 9;
+      p.style.cssText = `left:${Math.random()*100}%;top:${-5 - Math.random()*10}%;background:${color};width:${w}px;height:${h}px;--cf-dur:${1.2+Math.random()*1.3}s;--cf-delay:${Math.random()*0.7}s;--cf-rot:${Math.random()*360}deg;`;
+      document.body.appendChild(p);
+      setTimeout(() => p.remove(), 3200);
+    }
   }
 };

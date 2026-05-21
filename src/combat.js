@@ -246,7 +246,8 @@ const Combat = {
 
     if (GS.winner) {
       SFX.victory();
-      setTimeout(() => { GS.phase = PHASE.GAME_OVER; UI.render(); }, 1500);
+      UI.showVictoryConfetti();
+      setTimeout(() => { GS.phase = PHASE.GAME_OVER; UI.render(); }, 1900);
       return;
     }
 
@@ -374,7 +375,7 @@ const TM = {
       if (!GS.players[next].isEliminated) break;
       next = (next + 1) % GS.players.length;
     }
-    if (next <= GS.turn) { GS.round++; GS.alliances.clear(); }
+    if (next <= GS.turn) { GS.round++; GS.alliances.clear(); setTimeout(() => UI.showRoundBanner(GS.round), 150); }
     GS.turn = next;
 
     const nextP = GS.current;
