@@ -265,6 +265,11 @@ const Combat = {
           GS.addLog(`💰 ${attacker.name} claimed the BOUNTY! +2 cards!`, 'combo');
           UI.flash(`💰 Bounty claimed! +2 cards`, 'info');
         }
+        const newBounty = getBountyTarget();
+        if (newBounty && newBounty !== preBounty && !newBounty.isEliminated) {
+          GS.addLog(`🎯 ${newBounty.name} is now the BOUNTY TARGET!`, 'ultimate');
+          setTimeout(() => UI.flash(`🎯 ${newBounty.name} is the new Bounty Target!`, 'info'), 1400);
+        }
       }
     } else {
       GS.momentumHits[attacker.id] = 0;
@@ -321,6 +326,7 @@ const Combat = {
 
 const TM = {
   _timer: null,
+  _aiWatchdog: null,
 
   startTurn() {
     const p = GS.current;
@@ -368,6 +374,13 @@ const TM = {
     GS.phase = PHASE.ACTION;
     if (p.isAI) {
       UI.render();
+      clearTimeout(this._aiWatchdog);
+      this._aiWatchdog = setTimeout(() => {
+        if (GS.current === p && p.isAI) {
+          GS.pendingAttack = null; GS.selectedCard = null; GS.comboLeft = 0;
+          TM.endTurn();
+        }
+      }, 8000);
       setTimeout(() => AI.takeTurn(), 1100);
     } else {
       const isMyDevice = !Network.mode || Network.myPid === GS.turn;
@@ -407,6 +420,8 @@ const TM = {
 
   endTurn() {
     this.stopTimer();
+    clearTimeout(this._aiWatchdog);
+    this._aiWatchdog = null;
     GS.comboLeft = 0;
     GS.selectedCard = null;
 

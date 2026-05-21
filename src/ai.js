@@ -2,7 +2,8 @@ const AI = {
 
   takeTurn() {
     const p = GS.current;
-    if (!p.isAI || !p.alive) return;
+    // Guard: if turn shifted before the setTimeout fired, bail cleanly
+    if (!p || !p.isAI || !p.alive) { TM.endTurn(); return; }
 
     const foes = GS.alive.filter(o => o !== p);
     if (foes.length === 0) { TM.endTurn(); return; }

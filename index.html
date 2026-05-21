@@ -89,6 +89,7 @@
     <span id="deck-info">🃏 <span id="deck-count">0</span></span>
     <div id="timer-display" class="timer-display">30</div>
     <button id="mute-btn" title="Toggle sound">🔊</button>
+    <button id="help-btn" title="How to play">❓</button>
   </div>
   <div id="turn-order-strip"></div>
   <div id="opponents-zone"></div>
@@ -148,6 +149,47 @@
 
 <!-- Flash message -->
 <div id="flash-msg" class="flash-msg"></div>
+
+<!-- Help modal -->
+<div id="help-modal">
+  <div id="help-content">
+    <button id="help-close-btn">✕</button>
+    <h2>⚔️ Ultimate Ninja — How to Play</h2>
+    <div class="help-section">
+      <h3>Objective</h3>
+      <p>Be the last ninja standing! Each player starts with <strong>3 lives</strong>. Lose all 3 and you're eliminated.</p>
+    </div>
+    <div class="help-section">
+      <h3>On Your Turn</h3>
+      <ol>
+        <li><strong>Draw</strong> up to 5 cards (hand max is 7).</li>
+        <li><strong>Play one action</strong> — Attack, Ultimate Attack, Steal, Heal, Vanish, or Combo.</li>
+        <li><strong>End Turn</strong> when done.</li>
+      </ol>
+    </div>
+    <div class="help-section">
+      <h3>Card Types</h3>
+      <div class="help-cards">
+        <div class="help-card"><span>⚔️</span><strong>Attack</strong><p>Deal 1 damage to a target.</p></div>
+        <div class="help-card"><span>🌀</span><strong>Ultimate Attack</strong><p>Unblockable by regular Defense. Bypasses Vanish.</p></div>
+        <div class="help-card"><span>🛡</span><strong>Defense</strong><p>React to block a regular attack.</p></div>
+        <div class="help-card"><span>🔰</span><strong>Ultimate Defense</strong><p>Blocks any attack including Ultimate.</p></div>
+        <div class="help-card"><span>💨</span><strong>Vanish</strong><p>Play at turn start to become untargetable. OR react to dodge a regular attack.</p></div>
+        <div class="help-card"><span>⚡</span><strong>Combo</strong><p>Attack twice in one turn. Land both hits unblocked → draw +1 bonus card!</p></div>
+        <div class="help-card"><span>💚</span><strong>Heal</strong><p>Restore 1 life (max 3).</p></div>
+        <div class="help-card"><span>🫳</span><strong>Steal</strong><p>Take a card from an opponent's hand. You choose which slot!</p></div>
+      </div>
+    </div>
+    <div class="help-section">
+      <h3>Special Rules</h3>
+      <ul>
+        <li><strong>🎯 Bounty:</strong> The player with most kills has a bounty — eliminating them earns +2 cards!</li>
+        <li><strong>🔥 Momentum:</strong> Hit an opponent 2 turns in a row → draw +1 bonus card on your next turn.</li>
+        <li><strong>🤝 Alliance:</strong> Once per game, form a truce with one player. You can offer a card as a gift.</li>
+      </ul>
+    </div>
+  </div>
+</div>
 
 <!-- Scripts (load order matters: data → sound → game → combat → ai → ui → network → init) -->
 <script src="src/data.js"></script>
@@ -382,6 +424,17 @@ document.getElementById('play-again-btn').addEventListener('click', () => {
 document.getElementById('mute-btn').addEventListener('click', () => {
   SFX.muted = !SFX.muted;
   document.getElementById('mute-btn').textContent = SFX.muted ? '🔇' : '🔊';
+});
+
+document.getElementById('help-btn').addEventListener('click', () => {
+  document.getElementById('help-modal').classList.toggle('open');
+});
+document.getElementById('help-close-btn').addEventListener('click', () => {
+  document.getElementById('help-modal').classList.remove('open');
+});
+document.getElementById('help-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('help-modal'))
+    document.getElementById('help-modal').classList.remove('open');
 });
 
 buildPlayerConfigs();

@@ -37,8 +37,8 @@ const UI = {
       document.getElementById('pass-sub').textContent =
         `⚠️ ${attacker.name} is attacking you with ${card.name}!`;
       document.getElementById('pass-detail').textContent =
-        `${target.lives} ❤️  ·  ${target.hand.length} cards in hand`;
-      document.getElementById('pass-ready-btn').textContent = 'RESPOND TO ATTACK';
+        `${target.lives} ❤️  ·  ${target.hand.length} cards  ·  Tap to see your defense options`;
+      document.getElementById('pass-ready-btn').textContent = '⚔️ SEE MY DEFENSE OPTIONS';
     } else {
       const p = GS.current;
       document.getElementById('pass-title').textContent = `Pass to ${p.name}`;
@@ -139,6 +139,23 @@ const UI = {
         stealModal.style.display = 'flex';
       } else {
         stealModal.style.display = 'none';
+      }
+    }
+
+    // Combo phase hint
+    const playArea = document.getElementById('play-area');
+    if (playArea) {
+      let comboHint = playArea.querySelector('.combo-phase-hint');
+      if (phase === PHASE.COMBO_SELECT && isMyTurn) {
+        if (!comboHint) {
+          comboHint = document.createElement('div');
+          comboHint.className = 'combo-phase-hint';
+          playArea.appendChild(comboHint);
+        }
+        const hitNum = GS.comboLeft < 2 ? '2nd' : '1st';
+        comboHint.innerHTML = `⚡ COMBO — select your <strong>${hitNum} attack</strong>`;
+      } else if (comboHint) {
+        comboHint.remove();
       }
     }
 
@@ -263,10 +280,12 @@ const UI = {
         ? '<div class="ai-thinking"><span></span><span></span><span></span></div>' : '';
       const playingLabel = isTheirTurn && !p.isAI
         ? '<div class="opp-playing">Playing…</div>' : '';
-      const bountyBadge = isBounty ? '<div class="bounty-badge">🎯 BOUNTY</div>' : '';
+      const bountyBadge = isBounty
+        ? '<div class="bounty-badge" title="Bounty Target! Eliminate them to earn +2 bonus cards.">🎯 BOUNTY</div>' : '';
       const allianceBadge = isAllied ? '<div class="alliance-badge">🤝</div>' : '';
       const pStreak = GS.momentumHits[p.id] || 0;
-      const momentumBadge = pStreak >= 1 ? `<div class="opp-momentum">🔥${pStreak}</div>` : '';
+      const streakTip = pStreak >= 2 ? 'On a streak — earns +1 card on their next turn!' : 'Hit 2 turns in a row for a bonus card!';
+      const momentumBadge = pStreak >= 1 ? `<div class="opp-momentum" title="${streakTip}">🔥${pStreak}</div>` : '';
 
       el.innerHTML = `
         ${bountyBadge}
